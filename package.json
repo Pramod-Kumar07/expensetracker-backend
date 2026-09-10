@@ -1,0 +1,25 @@
+{
+  "name": "expensetracker-backend",
+  "version": "1.0.0",
+  "description": "An expense tracker app apis",
+  "license": "ISC",
+  "author": "Pramod",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index",
+    "dev": "nodemon index",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "prisma skills sync || exit 0"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.18.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14",
+    "prisma": "^5.18.0"
+  }
+}
