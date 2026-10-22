@@ -22,6 +22,7 @@ model User{
 
   expenses Expense[]
   categories Category[]
+  refreshToken RefreshToken[]
 }
 
 model Category{
@@ -58,4 +59,16 @@ model Expense{
   @@index([categoryId])
   @@index([date])
   @@index([userId, date])
+}
+
+model RefreshToken{
+  id  String  @id @default(uuid())
+  tokenHash String  @unique
+  userId  String
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields:[userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
