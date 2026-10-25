@@ -82,4 +82,106 @@ const createExpense = async (req, res, next) => {
   }
 };
 
-module.exports = { createExpense };
+const getAllExpense = async (req, res, next) => {
+  try {
+    const {
+      type,
+      categoryId,
+      startDate,
+      endDate,
+      page = "1",
+      limit = "10",
+    } = req.query;
+
+    const pageNumber = Number(page);
+    const pageSize = Number(limit);
+
+    if (
+      !Number.isInteger(pageNumber) ||
+      !Number.isInteger(pageSize) ||
+      pageNumber < 1 ||
+      pageSize < 1
+    ) {
+      return res.status(400).json({
+        status: 400,
+        message: "Invalid page number or size.",
+      });
+    }
+
+    if (type && !["INCOME", "EXPENSE"].includes(type)) {
+      return res.status(400).json({
+        status: 400,
+        message: "Invalid transaction type.",
+      });
+    }
+
+    const validDate = (date) =>
+      typeof date === "string" && !Number.isNaN(Date.parse(date));
+    if (
+      (startDate && !validDate(startDate)) ||
+      (endDate && !validDate(endDate))
+    ) {
+      return res.status(400).json({
+        status: 400,
+        message: "Invalid date filter",
+      });
+    }
+
+    if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+      return res.status(400).json({
+        status: 400,
+        message: "Start date must be before end date.",
+      });
+    }
+
+    const where = {
+      userId: req.user.id,
+      ...(type && { type }),
+      ...(categoryId && { categoryId }),
+      ...((startDate || endDate) && {
+        date: {
+          ...(startDate && {
+            gte: new Date(startDate),
+          }),
+          ...(endDate && {
+            lte: new Date(endDate),
+          }),
+        },
+      }),
+    };
+    const [expenses, total] = await prisma.$transaction([
+      prisma.expense.findMany({
+        where,
+        orderBy: {
+          date: "desc",
+        },
+        skip: (pageNumber - 1) * pageSize,
+        take: pageSize,
+        include: {
+          category: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      }),
+      prisma.expense.count({ where }),
+    ]);
+
+    return res.status(200).json({
+      status: 200,
+      message: "",
+      data: expenses,
+      pagination: {
+        page: pageNumber,
+        limit: pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+module.exports = { createExpense, getAllExpense };
