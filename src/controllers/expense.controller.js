@@ -184,4 +184,186 @@ const getAllExpense = async (req, res, next) => {
     next(error);
   }
 };
-module.exports = { createExpense, getAllExpense };
+
+const getExpenseById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const expense = await prisma.expense.findFirst({
+      where: {
+        id,
+        userId: req.user.id,
+      },
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!expense) {
+      return res.status(404).json({
+        status: 404,
+        message: "Transaction not found.",
+      });
+    }
+
+    return res.status(200).json({
+      status: 200,
+      message: "Transaction found.",
+      data: expense,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateExpense = async (req, res, next) => {
+  try {
+    const { amount, type, description, date, categoryId } = req.body;
+
+    const existingExpense = await prisma.expense.findFirst({
+      where: {
+        id: req.params.id,
+        userId: req.user.id,
+      },
+    });
+
+    if (!existingExpense) {
+      return res.status(404).json({
+        status: 404,
+        message: "Expense not found.",
+      });
+    }
+
+    const updateData = {};
+    if (amount !== undefined) {
+      const amountString = String(amount);
+      if (
+        !/^\d{1,10}(\.\d{1,2})?$/.test(amountString) ||
+        Number(amountString) <= 0
+      ) {
+        return res.status(400).json({
+          status: 400,
+          message: "Amount must be positive and atmost 2 decimal places.",
+        });
+      }
+      updateData.amount = amountString;
+    }
+
+    if (type !== undefined) {
+      if (!["ICOME", "EXPENSE"].includes(type)) {
+        return res.status(400).json({
+          status: 400,
+          message: "Type must be ICOME or EXPENSE",
+        });
+      }
+      updateData.type = type;
+    }
+
+    if (description !== undefined) {
+      if (
+        description !== null &&
+        (typeof description !== "string" || description.length > 500)
+      ) {
+        return res.status(400).json({
+          status: 400,
+          message: "Description must be a string of atmost 500 characters.",
+        });
+      }
+      updateData.description = description?.trim() || null;
+    }
+
+    if (date !== undefined) {
+      const parsedDate = new Date(date);
+      if (!date || Number.isNaN(parsedDate.getTime())) {
+        return res.status(400).json({
+          status: 400,
+          message: "Invalid date.",
+        });
+      }
+      updateData.date = parsedDate;
+    }
+
+    if (categoryId !== undefined) {
+      const category = await prisma.category.findFirst({
+        where: {
+          id: categoryId,
+          userId: req.user.id,
+        },
+      });
+      if (!category) {
+        return res.status(400).json({
+          status: 400,
+          message: "Invalid category.",
+        });
+      }
+      updateData.categoryId = categoryId;
+    }
+
+    if (Object.keys(updateData).length == 0) {
+      return res.status(400).json({
+        status: 400,
+        message: "Noting to update.",
+      });
+    }
+
+    const updatedExpense = await prisma.expense.update({
+      where: {
+        id: existingExpense.id,
+      },
+      data: updateData,
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    return res.status(200).json({
+      status: 200,
+      message: "Expense updated successfully.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteExpense = async (req, res, next) => {
+  try {
+    const deletedExpense = await prisma.expense.deleteMany({
+      where: {
+        id: req.params.id,
+        userId: req.user.id,
+      },
+    });
+
+    if (deletedExpense.count == 0) {
+      return res.status(400).json({
+        status: 400,
+        message: "Expense not found.",
+      });
+    }
+
+    return res.status(200).json({
+      status: 200,
+      message: "Expense deleted successfully.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  createExpense,
+  getAllExpense,
+  getExpenseById,
+  updateExpense,
+  deleteExpense,
+};

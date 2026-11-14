@@ -16,10 +16,8 @@ const authenticate = (req, res, next) => {
     req.user = {
       id: decoded.userId,
     };
-    console.log("helw before crash");
     next();
   } catch (error) {
-    console.log("hello from error");
     return res.status(401).json({
       status: 401,
       message: error.message || "Unauthorized!",
